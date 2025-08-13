@@ -1,0 +1,23 @@
+# Example .teller.yml configuration for Feller
+# This file demonstrates how to configure Feller for both GitHub Actions and local development
+
+providers:
+  # GitHub Actions secrets - when running in GitHub Actions,
+  # these will be read from environment variables injected by GitHub
+  gha_secrets:
+    kind: google_secretmanager
+    maps:
+      - id: app_secrets
+        keys:
+          # Environment Variable -> Output Key
+          DATABASE_URL: DATABASE_URL
+          API_KEY: API_KEY
+          REDIS_PASSWORD: REDIS_PASS
+          JWT_SECRET: JWT_SECRET
+
+  # Local development secrets - read from .env files
+  local_dev:
+    kind: dotenv
+    maps:
+      - id: local
+        path: .env
