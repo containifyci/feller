@@ -1,0 +1,245 @@
+name: 'Setup Feller'
+description: >-
+  Download and setup Feller binary for secret management in GitHub Actions
+author: 'containifyci'
+
+branding:
+  icon: 'key'
+  color: 'blue'
+
+inputs:
+  version:
+    description: 'Version of Feller to install (default: latest)'
+    required: false
+    default: 'latest'
+  command:
+    description: >-
+      Feller command to run (optional, e.g., "run", "export", "env")
+    required: false
+  args:
+    description: 'Arguments to pass to the feller command'
+    required: false
+  working-directory:
+    description: 'Working directory to run feller from'
+    required: false
+    default: '.'
+
+outputs:
+  feller-path:
+    description: 'Path to the installed feller binary'
+    value: ${{ steps.install.outputs.feller-path }}
+  version-installed:
+    description: 'Version of feller that was installed'
+    value: ${{ steps.install.outputs.version-installed }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Determine platform and architecture
+      shell: bash
+      id: platform
+      run: |
+        # Map GitHub runner OS to feller binary naming
+        case "${{ runner.os }}" in
+          "Linux")
+            os="linux"
+            ;;
+          "macOS")
+            os="darwin"
+            ;;
+          "Windows")
+            os="windows"
+            ;;
+          *)
+            echo "::error::Unsupported operating system: ${{ runner.os }}"
+            exit 1
+            ;;
+        esac
+
+        # Map GitHub runner architecture to feller binary naming
+        case "${{ runner.arch }}" in
+          "X64")
+            arch="amd64"
+            ;;
+          "ARM64")
+            arch="arm64"
+            ;;
+          *)
+            echo "::error::Unsupported architecture: ${{ runner.arch }}"
+            exit 1
+            ;;
+        esac
+
+        # Windows ARM64 is not supported by feller
+        if [[ "$os" == "windows" && "$arch" == "arm64" ]]; then
+          echo "::error::Windows ARM64 is not supported by feller"
+          exit 1
+        fi
+
+        # Set binary name
+        if [[ "$os" == "windows" ]]; then
+          binary_name="feller-${os}-${arch}.exe"
+          local_name="feller.exe"
+        else
+          binary_name="feller-${os}-${arch}"
+          local_name="feller"
+        fi
+
+        echo "os=${os}" >> $GITHUB_OUTPUT
+        echo "arch=${arch}" >> $GITHUB_OUTPUT
+        echo "binary-name=${binary_name}" >> $GITHUB_OUTPUT
+        echo "local-name=${local_name}" >> $GITHUB_OUTPUT
+
+    - name: Get latest version if needed
+      shell: bash
+      id: version
+      run: |
+        if [[ "${{ inputs.version }}" == "latest" ]]; then
+          # Get latest release version from GitHub API using jq for robust JSON parsing
+          echo "::debug::Fetching latest release information from GitHub API"
+          api_response=$(curl -s --retry 2 --connect-timeout 10 \
+            https://api.github.com/repos/containifyci/feller/releases/latest)
+          
+          if [[ -z "$api_response" ]]; then
+            echo "::error::Failed to fetch release information from GitHub API"
+            exit 1
+          fi
+          
+          latest_version=$(echo "$api_response" | jq -r '.tag_name // empty')
+          if [[ -z "$latest_version" || "$latest_version" == "null" ]]; then
+            echo "::error::Failed to parse latest version from GitHub API response"
+            echo "::debug::API Response: $api_response"
+            exit 1
+          fi
+          
+          echo "::debug::Found latest version: $latest_version"
+          echo "version=${latest_version}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Cache feller binary
+      uses: actions/cache@v4
+      id: cache
+      with:
+        path: ~/.feller-cache
+        key: >-
+          feller-${{ steps.version.outputs.version }}-${{ steps.platform.outputs.binary-name }}
+
+    - name: Download and install feller
+      shell: bash
+      id: install
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        version="${{ steps.version.outputs.version }}"
+        binary_name="${{ steps.platform.outputs.binary-name }}"
+        local_name="${{ steps.platform.outputs.local-name }}"
+
+        # Create cache directory
+        mkdir -p ~/.feller-cache
+
+        # Download binary
+        download_url="https://github.com/containifyci/feller/releases/download/${version}/${binary_name}"
+        echo "::notice::Downloading feller ${version} for ${{ runner.os }} ${{ runner.arch }}"
+        echo "Download URL: ${download_url}"
+
+        if ! curl -L -f --retry 3 --retry-delay 2 --connect-timeout 30 \
+          --max-time 300 -o ~/.feller-cache/${local_name} "${download_url}"; then
+          echo "::error::Failed to download feller binary from ${download_url}"
+          echo "::error::Please check network connectivity and URL availability"
+          exit 1
+        fi
+
+        # Download and verify checksums for binary integrity
+        echo "::debug::Downloading checksums for verification"
+        checksums_url="https://github.com/containifyci/feller/releases/download/${version}/checksums.txt"
+        if curl -L -f --retry 2 --connect-timeout 10 -o ~/.feller-cache/checksums.txt "${checksums_url}"; then
+          echo "::debug::Verifying binary checksum"
+          cd ~/.feller-cache
+          
+          if command -v sha256sum >/dev/null 2>&1; then
+            # Linux
+            if ! echo "$(grep "${binary_name}" checksums.txt)" | sha256sum -c --quiet; then
+              echo "::error::Checksum verification failed for ${binary_name}"
+              echo "::error::Binary may be corrupted or tampered with"
+              exit 1
+            fi
+          elif command -v shasum >/dev/null 2>&1; then
+            # macOS
+            expected_checksum=$(grep "${binary_name}" checksums.txt | cut -d' ' -f1)
+            actual_checksum=$(shasum -a 256 "${local_name}" | cut -d' ' -f1)
+            if [[ "$expected_checksum" != "$actual_checksum" ]]; then
+              echo "::error::Checksum verification failed for ${binary_name}"
+              echo "::error::Expected: $expected_checksum, Got: $actual_checksum"
+              exit 1
+            fi
+          else
+            echo "::warning::No checksum utility available, skipping verification"
+          fi
+          
+          echo "::notice::Binary checksum verification successful"
+          cd - >/dev/null
+        else
+          echo "::warning::Failed to download checksums, skipping verification"
+        fi
+
+        # Make executable on Unix systems
+        if [[ "${{ runner.os }}" != "Windows" ]]; then
+          chmod +x ~/.feller-cache/${local_name}
+        fi
+
+        # Verify the binary works
+        ~/.feller-cache/${local_name} --help > /dev/null 2>&1 || {
+          echo "::error::Downloaded feller binary is not functional"
+          exit 1
+        }
+
+        echo "feller-path=~/.feller-cache/${local_name}" >> $GITHUB_OUTPUT
+        echo "version-installed=${version}" >> $GITHUB_OUTPUT
+
+    - name: Set outputs for cached binary
+      shell: bash
+      if: steps.cache.outputs.cache-hit == 'true'
+      run: |
+        local_name="${{ steps.platform.outputs.local-name }}"
+        version="${{ steps.version.outputs.version }}"
+
+        echo "feller-path=~/.feller-cache/${local_name}" >> $GITHUB_OUTPUT
+        echo "version-installed=${version}" >> $GITHUB_OUTPUT
+
+    - name: Add feller to PATH
+      shell: bash
+      run: |
+        # Add the feller cache directory to PATH
+        echo "$(eval echo ~/.feller-cache)" >> $GITHUB_PATH
+
+    - name: Verify installation
+      shell: bash
+      run: |
+        local_name="${{ steps.platform.outputs.local-name }}"
+
+        # Verify feller is available in PATH
+        if ! command -v ${local_name} > /dev/null 2>&1; then
+          echo "::error::feller binary not found in PATH after installation"
+          exit 1
+        fi
+
+        # Show version info
+        echo "::notice::Feller installed successfully:"
+        ${local_name} --help | head -n 3 || true
+
+    - name: Run feller command
+      shell: bash
+      if: inputs.command != ''
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        local_name="${{ steps.platform.outputs.local-name }}"
+
+        # Build command
+        cmd="${local_name} ${{ inputs.command }}"
+        if [[ -n "${{ inputs.args }}" ]]; then
+          cmd="${cmd} ${{ inputs.args }}"
+        fi
+
+        echo "::notice::Running: ${cmd}"
+        eval "${cmd}"
