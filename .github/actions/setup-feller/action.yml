@@ -12,6 +12,10 @@ inputs:
     description: 'Version of Feller to install (default: latest)'
     required: false
     default: 'latest'
+  store-as-teller:
+    description: 'Store feller binary as teller for teller compatibility (default: true)'
+    required: false
+    default: 'true'
   command:
     description: >-
       Feller command to run (optional, e.g., "run", "export", "env")
@@ -39,26 +43,34 @@ runs:
       shell: bash
       id: platform
       run: |
+        # Determine local binary name based on store-as-teller setting
+        if [[ "${{ inputs.store-as-teller }}" == "true" ]]; then
+          local_name="teller"
+        else
+          local_name="feller"
+        fi
+        
+        # Set platform-specific binary names
         case "${{ runner.os }}-${{ runner.arch }}" in
           "Linux-X64")
             echo "binary-name=feller-linux-amd64" >> $GITHUB_OUTPUT
-            echo "local-name=feller" >> $GITHUB_OUTPUT
+            echo "local-name=${local_name}" >> $GITHUB_OUTPUT
             ;;
           "Linux-ARM64")
             echo "binary-name=feller-linux-arm64" >> $GITHUB_OUTPUT
-            echo "local-name=feller" >> $GITHUB_OUTPUT
+            echo "local-name=${local_name}" >> $GITHUB_OUTPUT
             ;;
           "macOS-X64")
             echo "binary-name=feller-darwin-amd64" >> $GITHUB_OUTPUT
-            echo "local-name=feller" >> $GITHUB_OUTPUT
+            echo "local-name=${local_name}" >> $GITHUB_OUTPUT
             ;;
           "macOS-ARM64")
             echo "binary-name=feller-darwin-arm64" >> $GITHUB_OUTPUT
-            echo "local-name=feller" >> $GITHUB_OUTPUT
+            echo "local-name=${local_name}" >> $GITHUB_OUTPUT
             ;;
           "Windows-X64")
             echo "binary-name=feller-windows-amd64.exe.exe" >> $GITHUB_OUTPUT
-            echo "local-name=feller.exe" >> $GITHUB_OUTPUT
+            echo "local-name=${local_name}.exe" >> $GITHUB_OUTPUT
             ;;
           "Windows-ARM64")
             echo "::error::Windows ARM64 is not supported by feller"
