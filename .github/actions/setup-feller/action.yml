@@ -78,7 +78,7 @@ runs:
 
         # Set binary name
         if [[ "$os" == "windows" ]]; then
-          binary_name="feller-${os}-${arch}.exe"
+          binary_name="feller-${os}-${arch}.exe.exe"
           local_name="feller.exe"
         else
           binary_name="feller-${os}-${arch}"
