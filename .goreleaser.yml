@@ -32,10 +32,7 @@ builds:
 
 # Disable archives - we want individual binaries
 archives:
-  - format_overrides:
-      - goos: windows
-        format: binary
-    format: binary
+  - format: binary
     name_template: >-
       {{ .ProjectName }}-
       {{- .Os }}-
