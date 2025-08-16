@@ -78,7 +78,7 @@ runs:
 
         # Set binary name
         if [[ "$os" == "windows" ]]; then
-          binary_name="feller-${os}-${arch}.exe"
+          binary_name="feller-${os}-${arch}.exe.exe"
           local_name="feller.exe"
         else
           binary_name="feller-${os}-${arch}"
@@ -166,11 +166,9 @@ runs:
             fi
           elif command -v shasum >/dev/null 2>&1; then
             # macOS
-            expected_checksum=$(grep "${binary_name}" checksums.txt | cut -d' ' -f1)
-            actual_checksum=$(shasum -a 256 "${local_name}" | cut -d' ' -f1)
-            if [[ "$expected_checksum" != "$actual_checksum" ]]; then
+            if ! echo "$(grep "${binary_name}" checksums.txt | sed "s/${binary_name}/${local_name}/g")" | shasum -a 256 -c --quiet; then
               echo "::error::Checksum verification failed for ${binary_name}"
-              echo "::error::Expected: $expected_checksum, Got: $actual_checksum"
+              echo "::error::Binary may be corrupted or tampered with"
               exit 1
             fi
           else
