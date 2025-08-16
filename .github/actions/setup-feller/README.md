@@ -4,6 +4,8 @@ A GitHub Action to download and setup the [Feller](https://github.com/containify
 
 Feller is a lightweight secret management tool optimized for GitHub Actions environments that can parse Teller configuration files and handle secrets efficiently.
 
+> **Note**: This action provides seamless integration for Feller in GitHub workflows.
+
 ## Features
 
 - **Cross-platform support**: Works on Linux, macOS, and Windows runners
