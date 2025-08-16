@@ -150,38 +150,6 @@ runs:
           exit 1
         fi
 
-        # Download and verify checksums for binary integrity
-        echo "::debug::Downloading checksums for verification"
-        checksums_url="https://github.com/containifyci/feller/releases/download/${version}/checksums.txt"
-        if curl -L -f --retry 2 --connect-timeout 10 -o ~/.feller-cache/checksums.txt "${checksums_url}"; then
-          echo "::debug::Verifying binary checksum"
-          cd ~/.feller-cache
-          
-          if command -v sha256sum >/dev/null 2>&1; then
-            # Linux
-            if ! echo "$(grep "${binary_name}" checksums.txt | sed "s/${binary_name}/${local_name}/g")" | sha256sum -c --quiet; then
-              echo "::error::Checksum verification failed for ${binary_name}"
-              echo "::error::Binary may be corrupted or tampered with"
-              exit 1
-            fi
-          elif command -v shasum >/dev/null 2>&1; then
-            # macOS
-            expected_checksum=$(grep "${binary_name}" checksums.txt | cut -d' ' -f1)
-            actual_checksum=$(shasum -a 256 "${local_name}" | cut -d' ' -f1)
-            if [[ "$expected_checksum" != "$actual_checksum" ]]; then
-              echo "::error::Checksum verification failed for ${binary_name}"
-              echo "::error::Expected: $expected_checksum, Got: $actual_checksum"
-              exit 1
-            fi
-          else
-            echo "::warning::No checksum utility available, skipping verification"
-          fi
-          
-          echo "::notice::Binary checksum verification successful"
-          cd - >/dev/null
-        else
-          echo "::warning::Failed to download checksums, skipping verification"
-        fi
 
         # Make executable on Unix systems
         if [[ "${{ runner.os }}" != "Windows" ]]; then
