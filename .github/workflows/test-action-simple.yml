@@ -1,0 +1,25 @@
+name: Test Action Simple
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, fr12k_github_action_setup_feller]
+
+jobs:
+  test-simple:
+    name: Simple Action Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Test Action Installation
+        uses: ./.github/actions/setup-feller
+        with:
+          version: 'v0.0.1'
+
+      - name: Verify Installation
+        run: |
+          feller --help
+          echo "Action test completed successfully!"

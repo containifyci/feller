@@ -10,7 +10,41 @@ permissions:
   packages: write
 
 jobs:
+  test-action:
+    name: Test GitHub Action Before Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Test action installation
+        uses: ./.github/actions/setup-feller
+        with:
+          version: 'latest'
+
+      - name: Create test config
+        run: |
+          cat > .teller.yml << 'EOF'
+          providers:
+            test_env:
+              kind: dotenv
+              maps:
+                - id: test_vars
+                  path: .env.test
+                  keys:
+                    TEST_VAR: TEST_OUTPUT
+          EOF
+          echo "TEST_VAR=release_test" > .env.test
+
+      - name: Test action with command
+        uses: ./.github/actions/setup-feller
+        with:
+          command: 'env'
+
   release:
+    needs: test-action
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
