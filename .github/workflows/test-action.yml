@@ -33,11 +33,11 @@ jobs:
       - name: Verify installation
         shell: bash
         run: |
-          # Check if feller is in PATH (cross-platform)
-          command -v feller
+          # Check if teller is in PATH (cross-platform) - default behavior now stores as teller
+          command -v teller
 
-          # Check if feller runs
-          feller --help
+          # Check if teller runs
+          teller --help
 
           # Verify outputs
           echo "Installed version: ${{ steps.install-latest.outputs.version-installed }}"
@@ -78,9 +78,9 @@ jobs:
       - name: Test - Multi-step usage
         shell: bash
         run: |
-          # Feller should still be available from previous steps
-          feller --help
-          feller env
+          # Teller should still be available from previous steps
+          teller --help
+          teller env
 
   test-caching:
     name: Test Binary Caching
@@ -100,8 +100,8 @@ jobs:
         with:
           version: 'v0.0.1'
 
-      - name: Verify feller still works after caching
-        run: feller --help
+      - name: Verify teller still works after caching
+        run: teller --help
 
   test-error-handling:
     name: Test Error Handling
@@ -236,18 +236,18 @@ jobs:
 
       - name: Export secrets to JSON
         run: |
-          feller export json > secrets.json
+          teller export json > secrets.json
           cat secrets.json
 
       - name: Export secrets to ENV format
         run: |
-          feller export env > secrets.env
+          teller export env > secrets.env
           cat secrets.env
 
       - name: Run script with secrets
-        run: feller run -- ./test-script.sh
+        run: teller run -- ./test-script.sh
 
       - name: Test shell export
         run: |
-          eval "$(feller sh)"
+          eval "$(teller sh)"
           ./test-script.sh
