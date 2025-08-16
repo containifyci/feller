@@ -95,13 +95,24 @@ runs:
       id: version
       run: |
         if [[ "${{ inputs.version }}" == "latest" ]]; then
-          # Get latest release version from GitHub API
-          latest_version=$(curl -s https://api.github.com/repos/containifyci/feller/releases/latest | \
-            grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-          if [[ -z "$latest_version" ]]; then
-            echo "::error::Failed to get latest version from GitHub API"
+          # Get latest release version from GitHub API using jq for robust JSON parsing
+          echo "::debug::Fetching latest release information from GitHub API"
+          api_response=$(curl -s --retry 2 --connect-timeout 10 \
+            https://api.github.com/repos/containifyci/feller/releases/latest)
+          
+          if [[ -z "$api_response" ]]; then
+            echo "::error::Failed to fetch release information from GitHub API"
             exit 1
           fi
+          
+          latest_version=$(echo "$api_response" | jq -r '.tag_name // empty')
+          if [[ -z "$latest_version" || "$latest_version" == "null" ]]; then
+            echo "::error::Failed to parse latest version from GitHub API response"
+            echo "::debug::API Response: $api_response"
+            exit 1
+          fi
+          
+          echo "::debug::Found latest version: $latest_version"
           echo "version=${latest_version}" >> $GITHUB_OUTPUT
         else
           echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
@@ -132,10 +143,44 @@ runs:
         echo "::notice::Downloading feller ${version} for ${{ runner.os }} ${{ runner.arch }}"
         echo "Download URL: ${download_url}"
 
-        if ! curl -L -f -o ~/.feller-cache/${local_name} \
-          "${download_url}"; then
+        if ! curl -L -f --retry 3 --retry-delay 2 --connect-timeout 30 \
+          --max-time 300 -o ~/.feller-cache/${local_name} "${download_url}"; then
           echo "::error::Failed to download feller binary from ${download_url}"
+          echo "::error::Please check network connectivity and URL availability"
           exit 1
+        fi
+
+        # Download and verify checksums for binary integrity
+        echo "::debug::Downloading checksums for verification"
+        checksums_url="https://github.com/containifyci/feller/releases/download/${version}/checksums.txt"
+        if curl -L -f --retry 2 --connect-timeout 10 -o ~/.feller-cache/checksums.txt "${checksums_url}"; then
+          echo "::debug::Verifying binary checksum"
+          cd ~/.feller-cache
+          
+          if command -v sha256sum >/dev/null 2>&1; then
+            # Linux
+            if ! echo "$(grep "${binary_name}" checksums.txt)" | sha256sum -c --quiet; then
+              echo "::error::Checksum verification failed for ${binary_name}"
+              echo "::error::Binary may be corrupted or tampered with"
+              exit 1
+            fi
+          elif command -v shasum >/dev/null 2>&1; then
+            # macOS
+            expected_checksum=$(grep "${binary_name}" checksums.txt | cut -d' ' -f1)
+            actual_checksum=$(shasum -a 256 "${local_name}" | cut -d' ' -f1)
+            if [[ "$expected_checksum" != "$actual_checksum" ]]; then
+              echo "::error::Checksum verification failed for ${binary_name}"
+              echo "::error::Expected: $expected_checksum, Got: $actual_checksum"
+              exit 1
+            fi
+          else
+            echo "::warning::No checksum utility available, skipping verification"
+          fi
+          
+          echo "::notice::Binary checksum verification successful"
+          cd - >/dev/null
+        else
+          echo "::warning::Failed to download checksums, skipping verification"
         fi
 
         # Make executable on Unix systems

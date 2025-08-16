@@ -33,8 +33,8 @@ jobs:
       - name: Verify installation
         shell: bash
         run: |
-          # Check if feller is in PATH
-          which feller || where feller
+          # Check if feller is in PATH (cross-platform)
+          command -v feller
 
           # Check if feller runs
           feller --help
@@ -179,7 +179,7 @@ jobs:
         with:
           command: 'env'
         env:
-          TEST_SECRET: ${{ secrets.GITHUB_TOKEN }}  # Use available secret
+          TEST_SECRET: mock-secret-token-12345  # Dedicated test value
           ANOTHER_SECRET: test_value
 
   integration-test:
