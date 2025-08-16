@@ -78,7 +78,7 @@ runs:
 
         # Set binary name
         if [[ "$os" == "windows" ]]; then
-          binary_name="feller-${os}-${arch}.exe.exe"
+          binary_name="feller-${os}-${arch}.exe"
           local_name="feller.exe"
         else
           binary_name="feller-${os}-${arch}"
@@ -159,7 +159,7 @@ runs:
           
           if command -v sha256sum >/dev/null 2>&1; then
             # Linux
-            if ! echo "$(grep "${binary_name}" checksums.txt)" | sha256sum -c --quiet; then
+            if ! echo "$(grep "${binary_name}" checksums.txt | sed "s/${binary_name}/${local_name}/g")" | sha256sum -c --quiet; then
               echo "::error::Checksum verification failed for ${binary_name}"
               echo "::error::Binary may be corrupted or tampered with"
               exit 1
