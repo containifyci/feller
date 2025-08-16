@@ -12,6 +12,33 @@ Feller is a lightweight secret management tool optimized for GitHub Actions envi
 
 ## Installation
 
+### From GitHub Releases (Recommended)
+
+Download the latest binary for your platform from the [releases page](https://github.com/containifyci/feller/releases):
+
+```bash
+# Linux x86_64
+curl -L https://github.com/containifyci/feller/releases/latest/download/feller-linux-amd64 -o feller
+chmod +x feller
+
+# Linux ARM64
+curl -L https://github.com/containifyci/feller/releases/latest/download/feller-linux-arm64 -o feller
+chmod +x feller
+
+# macOS x86_64
+curl -L https://github.com/containifyci/feller/releases/latest/download/feller-darwin-amd64 -o feller
+chmod +x feller
+
+# macOS ARM64 (Apple Silicon)
+curl -L https://github.com/containifyci/feller/releases/latest/download/feller-darwin-arm64 -o feller
+chmod +x feller
+
+# Windows x86_64
+curl -L https://github.com/containifyci/feller/releases/latest/download/feller-windows-amd64.exe -o feller.exe
+```
+
+### From Source
+
 ```bash
 go build -o feller .
 ```
@@ -126,7 +153,7 @@ jobs:
       - name: Setup Feller
         run: |
           # Install feller binary
-          curl -L https://github.com/yourorg/feller/releases/download/v1.0.0/feller -o feller
+          curl -L https://github.com/containifyci/feller/releases/latest/download/feller-linux-amd64 -o feller
           chmod +x feller
           
       - name: Deploy with secrets

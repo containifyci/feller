@@ -1,0 +1,122 @@
+# GoReleaser configuration for Feller
+# See: https://goreleaser.com
+
+version: 2
+
+project_name: feller
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - main: ./main.go
+    binary: feller
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    # Windows ARM64 is not supported (matching current build matrix)
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+    mod_timestamp: '{{ .CommitTimestamp }}'
+
+# Disable archives - we want individual binaries
+archives:
+  - format: binary
+    name_template: >-
+      {{ .ProjectName }}-
+      {{- .Os }}-
+      {{- if eq .Arch "amd64" }}amd64
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+      {{- if eq .Os "windows" }}.exe{{ end }}
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - '^chore:'
+      - '^style:'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: 'New Features'
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 0
+    - title: 'Bug Fixes'
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 1
+    - title: 'Security Updates'
+      regexp: '^.*?sec(\(.+\))??!?:.+$'
+      order: 2
+    - title: 'Performance Improvements'
+      regexp: '^.*?perf(\(.+\))??!?:.+$'
+      order: 3
+    - title: 'Refactoring'
+      regexp: '^.*?refactor(\(.+\))??!?:.+$'
+      order: 4
+    - title: 'Documentation'
+      regexp: '^.*?docs(\(.+\))??!?:.+$'
+      order: 5
+    - title: 'Other Changes'
+      order: 999
+
+release:
+  github:
+    owner: containifyci
+    name: feller
+  # If set to auto, will mark the release as not ready for production
+  # in case there is an indicator for this in the tag e.g. v1.0.0-rc1
+  prerelease: auto
+  name_template: "{{.ProjectName}} {{.Version}}"
+  header: |
+    ## What's Changed
+    
+    This release includes various improvements and bug fixes.
+  footer: |
+    ## Installation
+    
+    ### Direct Download
+    ```bash
+    # Linux x86_64
+    curl -L https://github.com/containifyci/feller/releases/download/{{.Tag}}/feller-linux-amd64 -o feller
+    chmod +x feller
+    
+    # macOS x86_64
+    curl -L https://github.com/containifyci/feller/releases/download/{{.Tag}}/feller-darwin-amd64 -o feller
+    chmod +x feller
+    
+    # Windows x86_64
+    curl -L https://github.com/containifyci/feller/releases/download/{{.Tag}}/feller-windows-amd64.exe -o feller.exe
+    ```
+    
+    ### GitHub Actions
+    ```yaml
+    - uses: containifyci/feller@{{.Tag}}
+      with:
+        command: run
+        args: "-- ./deploy.sh"
+    ```
