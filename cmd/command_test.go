@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -38,7 +38,7 @@ func NewRunCommand() *cobra.Command {
 		testResetEnv bool
 		testShell    bool
 	)
-	
+
 	cmd := &cobra.Command{
 		Use:   "run [flags] -- command [args...]",
 		Short: "Run a command with secrets as environment variables",
@@ -162,7 +162,7 @@ Examples:
 
 			// Simulate the requirement for repo flag
 			if testRepo == "" {
-				return fmt.Errorf("required flag \"repo\" not set")
+				return errors.New("required flag \"repo\" not set")
 			}
 
 			return nil
@@ -194,7 +194,7 @@ func validateOverwriteFlagsWithParams(force, skipExisting, confirmOverwrite bool
 	}
 
 	if flagCount > 1 {
-		return fmt.Errorf("only one overwrite strategy can be specified: --force, --skip-existing, or --confirm-overwrite")
+		return errors.New("only one overwrite strategy can be specified: --force, --skip-existing, or --confirm-overwrite")
 	}
 
 	return nil
