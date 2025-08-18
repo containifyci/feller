@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -34,6 +34,11 @@ Examples:
 
 // Constructor function for run command - makes it testable
 func NewRunCommand() *cobra.Command {
+	var (
+		testResetEnv bool
+		testShell    bool
+	)
+	
 	cmd := &cobra.Command{
 		Use:   "run [flags] -- command [args...]",
 		Short: "Run a command with secrets as environment variables",
@@ -49,8 +54,8 @@ Examples:
 		Args: cobra.MinimumNArgs(1),
 	}
 
-	cmd.Flags().BoolVarP(&resetEnv, "reset", "r", false, "Reset environment variables before running")
-	cmd.Flags().BoolVarP(&shell, "shell", "s", false, "Run command as shell command")
+	cmd.Flags().BoolVarP(&testResetEnv, "reset", "r", false, "Reset environment variables before running")
+	cmd.Flags().BoolVarP(&testShell, "shell", "s", false, "Run command as shell command")
 
 	return cmd
 }
@@ -157,7 +162,7 @@ Examples:
 
 			// Simulate the requirement for repo flag
 			if testRepo == "" {
-				return errors.New("required flag \"repo\" not set")
+				return fmt.Errorf("required flag \"repo\" not set")
 			}
 
 			return nil
@@ -189,7 +194,7 @@ func validateOverwriteFlagsWithParams(force, skipExisting, confirmOverwrite bool
 	}
 
 	if flagCount > 1 {
-		return errors.New("only one overwrite strategy can be specified: --force, --skip-existing, or --confirm-overwrite")
+		return fmt.Errorf("only one overwrite strategy can be specified: --force, --skip-existing, or --confirm-overwrite")
 	}
 
 	return nil
