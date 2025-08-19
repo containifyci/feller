@@ -13,10 +13,10 @@ import (
 )
 
 const (
-	testValue1        = "value1"
-	testValue2        = "value2"
-	nonexistentConfig = "/nonexistent/config.yml"
-	testConfigContent = `providers:
+	sampleSecretValue1 = "value1"
+	sampleSecretValue2 = "value2"
+	invalidConfigPath  = "/nonexistent/config.yml"
+	testConfigContent  = `providers:
   test-gsm:
     kind: google_secretmanager
     maps:
@@ -39,8 +39,8 @@ func TestExportJSON(t *testing.T) {
 		{
 			name: "valid secrets map",
 			secrets: providers.SecretMap{
-				"key1": testValue1,
-				"key2": testValue2,
+				"key1": sampleSecretValue1,
+				"key2": sampleSecretValue2,
 			},
 			wantErr: false,
 			validate: func(t *testing.T, output string) {
@@ -49,7 +49,7 @@ func TestExportJSON(t *testing.T) {
 				if err := json.Unmarshal([]byte(output), &result); err != nil {
 					t.Errorf("Invalid JSON output: %v", err)
 				}
-				if result["key1"] != testValue1 || result["key2"] != testValue2 {
+				if result["key1"] != sampleSecretValue1 || result["key2"] != sampleSecretValue2 {
 					t.Errorf("JSON output has incorrect values: %v", result)
 				}
 			},
@@ -145,8 +145,8 @@ func TestExportYAML(t *testing.T) {
 		{
 			name: "valid secrets map",
 			secrets: providers.SecretMap{
-				"key1": testValue1,
-				"key2": testValue2,
+				"key1": sampleSecretValue1,
+				"key2": sampleSecretValue2,
 			},
 			wantErr: false,
 			validate: func(t *testing.T, output string) {
@@ -155,7 +155,7 @@ func TestExportYAML(t *testing.T) {
 				if err := yaml.Unmarshal([]byte(output), &result); err != nil {
 					t.Errorf("Invalid YAML output: %v", err)
 				}
-				if result["key1"] != testValue1 || result["key2"] != testValue2 {
+				if result["key1"] != sampleSecretValue1 || result["key2"] != sampleSecretValue2 {
 					t.Errorf("YAML output has incorrect values: %v", result)
 				}
 			},
@@ -645,7 +645,7 @@ func TestExportSecrets(t *testing.T) {
 				t.Setenv("GITHUB_ACTIONS", "true")
 			},
 			setupConfig: func(_ *testing.T) string {
-				return nonexistentConfig
+				return invalidConfigPath
 			},
 			cleanupConfig: func(_ string) {},
 			silent:        false,
