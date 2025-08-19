@@ -499,8 +499,8 @@ func TestExecuteShellCommand(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Cannot run in parallel due to global command state access
 func TestExecute(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name    string
 		wantErr bool
@@ -513,7 +513,7 @@ func TestExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			//nolint:paralleltest // Cannot run in parallel due to global command state access
 			// Since Execute() calls rootCmd.Execute(), and we don't want to actually run
 			// the CLI during tests, we can test the error handling path instead
 			err := Execute()

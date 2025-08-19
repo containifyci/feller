@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
+//nolint:paralleltest // Cannot run in parallel due to global rootCmd manipulation
 func TestExecuteError(t *testing.T) {
-	t.Parallel()
 	// Save original command and restore after test
 	originalCmd := rootCmd
 	t.Cleanup(func() {
@@ -32,7 +32,7 @@ func TestExecuteError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			//nolint:paralleltest // Cannot run in parallel due to global rootCmd manipulation
 			if tt.setupCmd != nil {
 				tt.setupCmd()
 			}

@@ -95,8 +95,8 @@ func TestIsVerboseEnabled(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Cannot run in parallel due to os.Stderr manipulation
 func TestDebugLogging(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name         string
 		format       string
@@ -133,7 +133,7 @@ func TestDebugLogging(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			//nolint:paralleltest // Cannot run in parallel due to os.Stderr manipulation
 			// Capture stderr
 			oldStderr := os.Stderr
 			r, w, _ := os.Pipe()
@@ -170,8 +170,8 @@ func TestDebugLogging(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Cannot run in parallel due to os.Stderr manipulation
 func TestVerboseLogging(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name           string
 		format         string
@@ -208,7 +208,7 @@ func TestVerboseLogging(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			//nolint:paralleltest // Cannot run in parallel due to os.Stderr manipulation
 			// Capture stderr
 			oldStderr := os.Stderr
 			r, w, _ := os.Pipe()
@@ -245,8 +245,8 @@ func TestVerboseLogging(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Cannot run in parallel due to os.Stderr manipulation
 func TestInfoLogging(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name         string
 		format       string
@@ -269,7 +269,7 @@ func TestInfoLogging(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			//nolint:paralleltest // Cannot run in parallel due to os.Stderr manipulation
 			// Capture stderr
 			oldStderr := os.Stderr
 			r, w, _ := os.Pipe()
@@ -297,8 +297,8 @@ func TestInfoLogging(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Cannot run in parallel due to os.Stderr manipulation
 func TestErrorLogging(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name         string
 		format       string
@@ -321,7 +321,7 @@ func TestErrorLogging(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			//nolint:paralleltest // Cannot run in parallel due to os.Stderr manipulation
 			// Capture stderr
 			oldStderr := os.Stderr
 			r, w, _ := os.Pipe()
