@@ -7,11 +7,12 @@ import (
 )
 
 func TestExecuteError(t *testing.T) {
+	t.Parallel()
 	// Save original command and restore after test
 	originalCmd := rootCmd
-	defer func() {
+	t.Cleanup(func() {
 		rootCmd = originalCmd
-	}()
+	})
 
 	tests := []struct {
 		setupCmd    func()
@@ -31,6 +32,7 @@ func TestExecuteError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if tt.setupCmd != nil {
 				tt.setupCmd()
 			}
@@ -53,6 +55,7 @@ func TestExecuteError(t *testing.T) {
 }
 
 func TestExecTeller(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		tellerPath  string
@@ -76,7 +79,7 @@ func TestExecTeller(t *testing.T) {
 		},
 		{
 			name:       "valid command with echo",
-			tellerPath: "echo",
+			tellerPath: "/bin/echo",
 			args:       []string{"test"},
 			wantErr:    false,
 		},
@@ -84,6 +87,7 @@ func TestExecTeller(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := execTeller(tt.tellerPath, tt.args)
 
 			if tt.wantErr {
@@ -106,11 +110,11 @@ func TestFallbackToTellerEdgeCases(t *testing.T) {
 	originalCfgFile := cfgFile
 	originalVerbose := verbose
 	originalPath := os.Getenv("PATH")
-	defer func() {
+	t.Cleanup(func() {
 		cfgFile = originalCfgFile
 		verbose = originalVerbose
-		os.Setenv("PATH", originalPath)
-	}()
+		t.Setenv("PATH", originalPath)
+	})
 
 	tests := []struct {
 		setupPath   func()
@@ -127,26 +131,27 @@ func TestFallbackToTellerEdgeCases(t *testing.T) {
 			cfgFile: "",
 			verbose: false,
 			setupPath: func() {
-				os.Setenv("PATH", "")
+				t.Setenv("PATH", "")
 			},
 			wantErr:     true,
 			errContains: "failed to find teller binary",
 		},
 		{
 			name:    "complex args with flags",
-			args:    []string{"run", "--reset", "--shell", "--", "echo", "test"},
+			args:    []string{"run", "--reset", "--shell", "--", "/bin/echo", "test"},
 			cfgFile: "/complex/path/config.yml",
 			verbose: true,
 			setupPath: func() {
-				os.Setenv("PATH", "")
+				t.Setenv("PATH", "")
 			},
 			wantErr:     true,
 			errContains: "failed to find teller binary",
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // uses t.Setenv() and modifies global variables
 		t.Run(tt.name, func(t *testing.T) {
+			// Note: Cannot use t.Parallel() here as sub-tests use t.Setenv() and modify global variables
 			cfgFile = tt.cfgFile
 			verbose = tt.verbose
 			if tt.setupPath != nil {
@@ -173,9 +178,9 @@ func TestFallbackToTellerEdgeCases(t *testing.T) {
 func TestFindTellerBinaryEdgeCases(t *testing.T) {
 	// Save original PATH
 	originalPath := os.Getenv("PATH")
-	defer func() {
-		os.Setenv("PATH", originalPath)
-	}()
+	t.Cleanup(func() {
+		t.Setenv("PATH", originalPath)
+	})
 
 	tests := []struct {
 		setupPath   func()
@@ -186,7 +191,7 @@ func TestFindTellerBinaryEdgeCases(t *testing.T) {
 		{
 			name: "empty PATH",
 			setupPath: func() {
-				os.Setenv("PATH", "")
+				t.Setenv("PATH", "")
 			},
 			wantErr:     true,
 			errContains: "teller binary not found in PATH",
@@ -194,15 +199,16 @@ func TestFindTellerBinaryEdgeCases(t *testing.T) {
 		{
 			name: "PATH with nonexistent directories",
 			setupPath: func() {
-				os.Setenv("PATH", "/nonexistent/dir1:/nonexistent/dir2")
+				t.Setenv("PATH", "/nonexistent/dir1:/nonexistent/dir2")
 			},
 			wantErr:     true,
 			errContains: "teller binary not found in PATH",
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // uses t.Setenv()
 		t.Run(tt.name, func(t *testing.T) {
+			// Note: Cannot use t.Parallel() here as sub-tests use t.Setenv()
 			if tt.setupPath != nil {
 				tt.setupPath()
 			}
@@ -212,16 +218,20 @@ func TestFindTellerBinaryEdgeCases(t *testing.T) {
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("findTellerBinary() expected error but got none")
-				} else if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+					return
+				}
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("findTellerBinary() error = %v, expected to contain %q", err, tt.errContains)
 				}
-			} else {
-				if err != nil {
-					t.Errorf("findTellerBinary() unexpected error = %v", err)
-				}
-				if path == "" {
-					t.Errorf("findTellerBinary() returned empty path")
-				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("findTellerBinary() unexpected error = %v", err)
+				return
+			}
+			if path == "" {
+				t.Errorf("findTellerBinary() returned empty path")
 			}
 		})
 	}

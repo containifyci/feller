@@ -8,6 +8,7 @@ import (
 )
 
 func TestLoadConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		setupFunc   func(t *testing.T) string
 		cleanupFunc func(string)
@@ -57,6 +58,7 @@ func TestLoadConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			var configPath string
 			if tt.setupFunc != nil {
 				configPath = tt.setupFunc(t)
@@ -108,16 +110,14 @@ func TestLoadConfig(t *testing.T) {
 	}
 }
 
-func TestFindConfigFile(t *testing.T) {
+func TestFindConfigFile(t *testing.T) { //nolint:paralleltest // uses t.Chdir() in main and sub-tests
 	// Save original working directory
 	originalWd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get working directory: %v", err)
 	}
 	defer func() {
-		if err := os.Chdir(originalWd); err != nil {
-			t.Errorf("Failed to restore working directory: %v", err)
-		}
+		t.Chdir(originalWd)
 	}()
 
 	tests := []struct {
@@ -129,6 +129,7 @@ func TestFindConfigFile(t *testing.T) {
 		{
 			name: "config file in current directory",
 			setupFunc: func(t *testing.T) (string, func()) {
+				t.Helper()
 				tempDir := t.TempDir()
 				configPath := filepath.Join(tempDir, ".teller.yml")
 				if err := os.WriteFile(configPath, []byte("providers: {}"), 0o644); err != nil {
@@ -141,6 +142,7 @@ func TestFindConfigFile(t *testing.T) {
 		{
 			name: "config file in parent directory",
 			setupFunc: func(t *testing.T) (string, func()) {
+				t.Helper()
 				tempDir := t.TempDir()
 				subDir := filepath.Join(tempDir, "subdir")
 				if err := os.MkdirAll(subDir, 0o755); err != nil {
@@ -157,6 +159,7 @@ func TestFindConfigFile(t *testing.T) {
 		{
 			name: "no config file found",
 			setupFunc: func(t *testing.T) (string, func()) {
+				t.Helper()
 				tempDir := t.TempDir()
 				return tempDir, func() {}
 			},
@@ -165,15 +168,14 @@ func TestFindConfigFile(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // sub-tests use t.Chdir()
 		t.Run(tt.name, func(t *testing.T) {
+			// Note: Cannot use t.Parallel() here as sub-tests use t.Chdir()
 			tempDir, cleanup := tt.setupFunc(t)
 			defer cleanup()
 
 			// Change to test directory
-			if err := os.Chdir(tempDir); err != nil {
-				t.Fatalf("Failed to change to temp directory: %v", err)
-			}
+			t.Chdir(tempDir)
 
 			configPath, err := findConfigFile()
 
@@ -205,6 +207,7 @@ func TestFindConfigFile(t *testing.T) {
 }
 
 func TestGetProvidersByKind(t *testing.T) {
+	t.Parallel()
 	config := &TellerConfig{
 		Providers: map[string]Provider{
 			"gsm1": {
@@ -255,6 +258,7 @@ func TestGetProvidersByKind(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			providers := config.GetProvidersByKind(tt.kind)
 
 			if len(providers) != len(tt.expectedKeys) {
@@ -297,6 +301,7 @@ func validConfigYAML() string {
 }
 
 func createTempConfigFile(t *testing.T) string {
+	t.Helper()
 	content := validConfigYAML()
 
 	// Check specific test cases
@@ -327,6 +332,7 @@ func createTempConfigFile(t *testing.T) string {
 }
 
 func createTellerYmlInCurrentDir(t *testing.T) string {
+	t.Helper()
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get working directory: %v", err)
