@@ -12,6 +12,23 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	sampleSecretValue1 = "value1"
+	sampleSecretValue2 = "value2"
+	invalidConfigPath  = "/nonexistent/config.yml"
+	testConfigContent  = `providers:
+  test-gsm:
+    kind: google_secretmanager
+    maps:
+      - id: test
+        path: projects/test/secrets/test
+        keys:
+          EXISTING_VAR: MAPPED_EXISTING
+          MISSING_VAR: MAPPED_MISSING
+`
+)
+
+//nolint:paralleltest // Cannot run in parallel due to stdout manipulation
 func TestExportJSON(t *testing.T) {
 	tests := []struct {
 		secrets  providers.SecretMap
@@ -22,16 +39,17 @@ func TestExportJSON(t *testing.T) {
 		{
 			name: "valid secrets map",
 			secrets: providers.SecretMap{
-				"key1": "value1",
-				"key2": "value2",
+				"key1": sampleSecretValue1,
+				"key2": sampleSecretValue2,
 			},
 			wantErr: false,
 			validate: func(t *testing.T, output string) {
+				t.Helper()
 				var result map[string]string
 				if err := json.Unmarshal([]byte(output), &result); err != nil {
 					t.Errorf("Invalid JSON output: %v", err)
 				}
-				if result["key1"] != "value1" || result["key2"] != "value2" {
+				if result["key1"] != sampleSecretValue1 || result["key2"] != sampleSecretValue2 {
 					t.Errorf("JSON output has incorrect values: %v", result)
 				}
 			},
@@ -41,6 +59,7 @@ func TestExportJSON(t *testing.T) {
 			secrets: providers.SecretMap{},
 			wantErr: false,
 			validate: func(t *testing.T, output string) {
+				t.Helper()
 				var result map[string]string
 				if err := json.Unmarshal([]byte(output), &result); err != nil {
 					t.Errorf("Invalid JSON output: %v", err)
@@ -58,6 +77,7 @@ func TestExportJSON(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, output string) {
+				t.Helper()
 				var result map[string]string
 				if err := json.Unmarshal([]byte(output), &result); err != nil {
 					t.Errorf("Invalid JSON output: %v", err)
@@ -77,6 +97,7 @@ func TestExportJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			//nolint:paralleltest // Cannot run in parallel due to stdout manipulation
 			// Capture stdout
 			oldStdout := os.Stdout
 			r, w, _ := os.Pipe()
@@ -113,6 +134,7 @@ func TestExportJSON(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Cannot run in parallel due to stdout manipulation
 func TestExportYAML(t *testing.T) {
 	tests := []struct {
 		secrets  providers.SecretMap
@@ -123,16 +145,17 @@ func TestExportYAML(t *testing.T) {
 		{
 			name: "valid secrets map",
 			secrets: providers.SecretMap{
-				"key1": "value1",
-				"key2": "value2",
+				"key1": sampleSecretValue1,
+				"key2": sampleSecretValue2,
 			},
 			wantErr: false,
 			validate: func(t *testing.T, output string) {
+				t.Helper()
 				var result map[string]string
 				if err := yaml.Unmarshal([]byte(output), &result); err != nil {
 					t.Errorf("Invalid YAML output: %v", err)
 				}
-				if result["key1"] != "value1" || result["key2"] != "value2" {
+				if result["key1"] != sampleSecretValue1 || result["key2"] != sampleSecretValue2 {
 					t.Errorf("YAML output has incorrect values: %v", result)
 				}
 			},
@@ -142,6 +165,7 @@ func TestExportYAML(t *testing.T) {
 			secrets: providers.SecretMap{},
 			wantErr: false,
 			validate: func(t *testing.T, output string) {
+				t.Helper()
 				var result map[string]string
 				if err := yaml.Unmarshal([]byte(output), &result); err != nil {
 					t.Errorf("Invalid YAML output: %v", err)
@@ -159,6 +183,7 @@ func TestExportYAML(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, output string) {
+				t.Helper()
 				var result map[string]string
 				if err := yaml.Unmarshal([]byte(output), &result); err != nil {
 					t.Errorf("Invalid YAML output: %v", err)
@@ -178,6 +203,7 @@ func TestExportYAML(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			//nolint:paralleltest // Cannot run in parallel due to stdout manipulation
 			// Capture stdout
 			oldStdout := os.Stdout
 			r, w, _ := os.Pipe()
@@ -212,6 +238,7 @@ func TestExportYAML(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Cannot run in parallel due to stdout manipulation
 func TestExportEnv(t *testing.T) {
 	tests := []struct {
 		secrets   providers.SecretMap
@@ -255,6 +282,7 @@ func TestExportEnv(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			//nolint:paralleltest // Cannot run in parallel due to stdout manipulation
 			// Capture stdout
 			oldStdout := os.Stdout
 			r, w, _ := os.Pipe()
@@ -311,6 +339,7 @@ func TestExportEnv(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Cannot run in parallel due to stdout manipulation
 func TestExportCSV(t *testing.T) {
 	tests := []struct {
 		secrets   providers.SecretMap
@@ -354,6 +383,7 @@ func TestExportCSV(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			//nolint:paralleltest // Cannot run in parallel due to stdout manipulation
 			// Capture stdout
 			oldStdout := os.Stdout
 			r, w, _ := os.Pipe()
@@ -415,6 +445,7 @@ func TestExportCSV(t *testing.T) {
 }
 
 func TestHandleMissingVariablesExport(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		missingVars []providers.MissingVariable
@@ -472,6 +503,7 @@ func TestHandleMissingVariablesExport(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := handleMissingVariablesExport(tt.missingVars)
 
 			if tt.wantErr {
@@ -486,10 +518,8 @@ func TestHandleMissingVariablesExport(t *testing.T) {
 						t.Errorf("handleMissingVariablesExport() error should contain %q, got: %v", contains, err)
 					}
 				}
-			} else {
-				if err != nil {
-					t.Errorf("handleMissingVariablesExport() unexpected error = %v", err)
-				}
+			} else if err != nil {
+				t.Errorf("handleMissingVariablesExport() unexpected error = %v", err)
 			}
 		})
 	}
@@ -498,23 +528,23 @@ func TestHandleMissingVariablesExport(t *testing.T) {
 func TestExportSecrets(t *testing.T) {
 	// Save original environment
 	originalEnv := os.Environ()
-	defer func() {
+	t.Cleanup(func() {
 		os.Clearenv()
 		for _, env := range originalEnv {
 			parts := strings.SplitN(env, "=", 2)
 			if len(parts) == 2 {
-				os.Setenv(parts[0], parts[1])
+				t.Setenv(parts[0], parts[1])
 			}
 		}
-	}()
+	})
 
 	// Save original values
 	originalCfgFile := cfgFile
 	originalSilent := silent
-	defer func() {
+	t.Cleanup(func() {
 		cfgFile = originalCfgFile
 		silent = originalSilent
-	}()
+	})
 
 	tests := []struct {
 		setupEnv       func(t *testing.T)
@@ -531,11 +561,13 @@ func TestExportSecrets(t *testing.T) {
 			name: "GitHub Actions with valid JSON export",
 			args: []string{"json"},
 			setupEnv: func(t *testing.T) {
-				os.Setenv("GITHUB_ACTIONS", "true")
-				os.Setenv("TEST_VAR1", "value1")
-				os.Setenv("TEST_VAR2", "value2")
+				t.Helper()
+				t.Setenv("GITHUB_ACTIONS", "true")
+				t.Setenv("TEST_VAR1", "value1")
+				t.Setenv("TEST_VAR2", "value2")
 			},
 			setupConfig: func(t *testing.T) string {
+				t.Helper()
 				tmpFile, err := os.CreateTemp(t.TempDir(), "teller-*.yml")
 				if err != nil {
 					t.Fatalf("Failed to create temp file: %v", err)
@@ -565,6 +597,7 @@ func TestExportSecrets(t *testing.T) {
 			silent:  false,
 			wantErr: false,
 			validateOutput: func(t *testing.T, output string) {
+				t.Helper()
 				var result map[string]string
 				if err := json.Unmarshal([]byte(output), &result); err != nil {
 					t.Errorf("exportSecrets should produce valid JSON: %v", err)
@@ -578,9 +611,11 @@ func TestExportSecrets(t *testing.T) {
 			name: "GitHub Actions with invalid format",
 			args: []string{"invalid"},
 			setupEnv: func(t *testing.T) {
-				os.Setenv("GITHUB_ACTIONS", "true")
+				t.Helper()
+				t.Setenv("GITHUB_ACTIONS", "true")
 			},
 			setupConfig: func(t *testing.T) string {
+				t.Helper()
 				tmpFile, err := os.CreateTemp(t.TempDir(), "teller-*.yml")
 				if err != nil {
 					t.Fatalf("Failed to create temp file: %v", err)
@@ -606,12 +641,13 @@ func TestExportSecrets(t *testing.T) {
 			name: "GitHub Actions with missing config file",
 			args: []string{"json"},
 			setupEnv: func(t *testing.T) {
-				os.Setenv("GITHUB_ACTIONS", "true")
+				t.Helper()
+				t.Setenv("GITHUB_ACTIONS", "true")
 			},
-			setupConfig: func(t *testing.T) string {
-				return "/nonexistent/config.yml"
+			setupConfig: func(_ *testing.T) string {
+				return invalidConfigPath
 			},
-			cleanupConfig: func(path string) {},
+			cleanupConfig: func(_ string) {},
 			silent:        false,
 			wantErr:       true,
 			errContains:   "failed to load config",
@@ -620,25 +656,18 @@ func TestExportSecrets(t *testing.T) {
 			name: "GitHub Actions with missing variables not silent",
 			args: []string{"json"},
 			setupEnv: func(t *testing.T) {
-				os.Setenv("GITHUB_ACTIONS", "true")
-				os.Setenv("EXISTING_VAR", "existing_value")
+				t.Helper()
+				t.Setenv("GITHUB_ACTIONS", "true")
+				t.Setenv("EXISTING_VAR", "existing_value")
 			},
 			setupConfig: func(t *testing.T) string {
+				t.Helper()
 				tmpFile, err := os.CreateTemp(t.TempDir(), "teller-*.yml")
 				if err != nil {
 					t.Fatalf("Failed to create temp file: %v", err)
 				}
 
-				content := `providers:
-  test-gsm:
-    kind: google_secretmanager
-    maps:
-      - id: test
-        path: projects/test/secrets/test
-        keys:
-          EXISTING_VAR: MAPPED_EXISTING
-          MISSING_VAR: MAPPED_MISSING
-`
+				content := testConfigContent
 				if _, err := tmpFile.WriteString(content); err != nil {
 					tmpFile.Close()
 					os.Remove(tmpFile.Name())
@@ -658,25 +687,18 @@ func TestExportSecrets(t *testing.T) {
 			name: "GitHub Actions with missing variables in silent mode",
 			args: []string{"json"},
 			setupEnv: func(t *testing.T) {
-				os.Setenv("GITHUB_ACTIONS", "true")
-				os.Setenv("EXISTING_VAR", "existing_value")
+				t.Helper()
+				t.Setenv("GITHUB_ACTIONS", "true")
+				t.Setenv("EXISTING_VAR", "existing_value")
 			},
 			setupConfig: func(t *testing.T) string {
+				t.Helper()
 				tmpFile, err := os.CreateTemp(t.TempDir(), "teller-*.yml")
 				if err != nil {
 					t.Fatalf("Failed to create temp file: %v", err)
 				}
 
-				content := `providers:
-  test-gsm:
-    kind: google_secretmanager
-    maps:
-      - id: test
-        path: projects/test/secrets/test
-        keys:
-          EXISTING_VAR: MAPPED_EXISTING
-          MISSING_VAR: MAPPED_MISSING
-`
+				content := testConfigContent
 				if _, err := tmpFile.WriteString(content); err != nil {
 					tmpFile.Close()
 					os.Remove(tmpFile.Name())
@@ -691,6 +713,7 @@ func TestExportSecrets(t *testing.T) {
 			silent:  true,
 			wantErr: false,
 			validateOutput: func(t *testing.T, output string) {
+				t.Helper()
 				var result map[string]string
 				if err := json.Unmarshal([]byte(output), &result); err != nil {
 					t.Errorf("exportSecrets should produce valid JSON: %v", err)
@@ -705,8 +728,9 @@ func TestExportSecrets(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // setupEnv uses t.Setenv()
 		t.Run(tt.name, func(t *testing.T) {
+			// Note: Cannot use t.Parallel() here as setupEnv uses t.Setenv()
 			// Setup environment
 			if tt.setupEnv != nil {
 				tt.setupEnv(t)

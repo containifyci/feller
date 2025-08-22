@@ -10,6 +10,7 @@ import (
 )
 
 func TestMaskSecret(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    string
@@ -49,6 +50,7 @@ func TestMaskSecret(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := maskSecret(tt.value)
 			if result != tt.expected {
 				t.Errorf("maskSecret(%q) = %q, want %q", tt.value, result, tt.expected)
@@ -66,14 +68,14 @@ func TestCollectSecrets(t *testing.T) {
 		for _, env := range originalEnv {
 			parts := strings.SplitN(env, "=", 2)
 			if len(parts) == 2 {
-				os.Setenv(parts[0], parts[1])
+				t.Setenv(parts[0], parts[1])
 			}
 		}
 	}()
 
 	// Set test environment variables
-	os.Setenv("TEST_VAR1", "value1")
-	os.Setenv("TEST_VAR2", "value2")
+	t.Setenv("TEST_VAR1", "value1")
+	t.Setenv("TEST_VAR2", "value2")
 
 	tests := []struct {
 		config         *config.TellerConfig
@@ -142,6 +144,7 @@ func TestCollectSecrets(t *testing.T) {
 			},
 			wantErr: false,
 			setupEnvFile: func(t *testing.T) string {
+				t.Helper()
 				tmpFile, err := os.CreateTemp(t.TempDir(), "test-env-*.env")
 				if err != nil {
 					t.Fatalf("Failed to create temp env file: %v", err)
@@ -188,6 +191,7 @@ IGNORED_VAR=ignored_value
 			},
 			wantErr: false,
 			setupEnvFile: func(t *testing.T) string {
+				t.Helper()
 				tmpFile, err := os.CreateTemp(t.TempDir(), "test-env-*.env")
 				if err != nil {
 					t.Fatalf("Failed to create temp env file: %v", err)
@@ -234,8 +238,9 @@ IGNORED_VAR=ignored_value
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // main function uses t.Setenv()
 		t.Run(tt.name, func(t *testing.T) {
+			// Note: Cannot use t.Parallel() here as main function uses t.Setenv()
 			// Setup environment file if needed
 			if tt.setupEnvFile != nil {
 				envPath := tt.setupEnvFile(t)
@@ -284,12 +289,12 @@ func TestCollectSecretsWithResult(t *testing.T) {
 		for _, env := range originalEnv {
 			parts := strings.SplitN(env, "=", 2)
 			if len(parts) == 2 {
-				os.Setenv(parts[0], parts[1])
+				t.Setenv(parts[0], parts[1])
 			}
 		}
 	}()
 
-	os.Setenv("EXISTING_VAR", "existing_value")
+	t.Setenv("EXISTING_VAR", "existing_value")
 
 	tests := []struct {
 		config               *config.TellerConfig
@@ -351,8 +356,9 @@ func TestCollectSecretsWithResult(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // main function uses t.Setenv()
 		t.Run(tt.name, func(t *testing.T) {
+			// Note: Cannot use t.Parallel() here as main function uses t.Setenv()
 			result, err := CollectSecretsWithResult(tt.config, tt.silent)
 
 			if tt.wantErr {
@@ -388,6 +394,7 @@ func TestCollectSecretsWithResult(t *testing.T) {
 }
 
 func TestLoadEnvFile(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		expectedVars map[string]string
 		name         string
@@ -449,6 +456,7 @@ ANOTHER_KEY=another_value`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			var filePath string
 
 			if tt.name == "nonexistent file" {
@@ -500,13 +508,13 @@ func TestCollectGSMSecretsWithMissing(t *testing.T) {
 		for _, env := range originalEnv {
 			parts := strings.SplitN(env, "=", 2)
 			if len(parts) == 2 {
-				os.Setenv(parts[0], parts[1])
+				t.Setenv(parts[0], parts[1])
 			}
 		}
 	}()
 
 	// Set test environment
-	os.Setenv("PRESENT_VAR", "present_value")
+	t.Setenv("PRESENT_VAR", "present_value")
 
 	tests := []struct {
 		expectedSecrets      SecretMap
@@ -574,8 +582,9 @@ func TestCollectGSMSecretsWithMissing(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // main function uses t.Setenv()
 		t.Run(tt.name, func(t *testing.T) {
+			// Note: Cannot use t.Parallel() here as main function uses t.Setenv()
 			secrets, missingVars := collectGSMSecretsWithMissing(tt.provider, tt.providerName)
 
 			if !reflect.DeepEqual(secrets, tt.expectedSecrets) {
@@ -597,6 +606,7 @@ func TestCollectGSMSecretsWithMissing(t *testing.T) {
 }
 
 func TestCollectDotenvSecrets(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		expectedSecrets SecretMap
 		name            string
@@ -673,6 +683,7 @@ VAR3=value3`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if tt.name != "dotenv with missing file" {
 				// Create temp file
 				tmpFile, err := os.CreateTemp(t.TempDir(), "test-env-*.env")

@@ -9,7 +9,19 @@ import (
 	"github.com/containifyci/feller/pkg/providers"
 )
 
+const shTestConfigContent = `providers:
+  test-gsm:
+    kind: google_secretmanager
+    maps:
+      - id: test
+        path: projects/test/secrets/test
+        keys:
+          EXISTING_VAR: MAPPED_EXISTING
+          MISSING_VAR: MAPPED_MISSING
+`
+
 func TestShellEscape(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -59,6 +71,7 @@ func TestShellEscape(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := shellEscape(tt.input)
 			if result != tt.expected {
 				t.Errorf("shellEscape(%q) = %q, want %q", tt.input, result, tt.expected)
@@ -68,6 +81,7 @@ func TestShellEscape(t *testing.T) {
 }
 
 func TestShellReplaceAll(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		s           string
@@ -128,6 +142,7 @@ func TestShellReplaceAll(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := shellReplaceAll(tt.s, tt.old, tt.replacement)
 			if result != tt.expected {
 				t.Errorf("shellReplaceAll(%q, %q, %q) = %q, want %q",
@@ -138,6 +153,7 @@ func TestShellReplaceAll(t *testing.T) {
 }
 
 func TestShellIndexOf(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		s        string
@@ -202,6 +218,7 @@ func TestShellIndexOf(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := shellIndexOf(tt.s, tt.substr)
 			if result != tt.expected {
 				t.Errorf("shellIndexOf(%q, %q) = %d, want %d",
@@ -212,6 +229,7 @@ func TestShellIndexOf(t *testing.T) {
 }
 
 func TestHandleMissingVariablesShell(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		missingVars []providers.MissingVariable
@@ -292,6 +310,7 @@ func TestHandleMissingVariablesShell(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := handleMissingVariablesShell(tt.missingVars)
 
 			if tt.wantErr {
@@ -306,16 +325,14 @@ func TestHandleMissingVariablesShell(t *testing.T) {
 						t.Errorf("handleMissingVariablesShell() error should contain %q, got: %v", contains, err)
 					}
 				}
-			} else {
-				if err != nil {
-					t.Errorf("handleMissingVariablesShell() unexpected error = %v", err)
-				}
+			} else if err != nil {
+				t.Errorf("handleMissingVariablesShell() unexpected error = %v", err)
 			}
 		})
 	}
 }
 
-func TestExportShell(t *testing.T) {
+func TestExportShell(t *testing.T) { //nolint:paralleltest // uses t.Setenv() in main and sub-tests
 	// Save original environment
 	originalEnv := os.Environ()
 	defer func() {
@@ -323,7 +340,7 @@ func TestExportShell(t *testing.T) {
 		for _, env := range originalEnv {
 			parts := strings.SplitN(env, "=", 2)
 			if len(parts) == 2 {
-				os.Setenv(parts[0], parts[1])
+				t.Setenv(parts[0], parts[1])
 			}
 		}
 	}()
@@ -349,12 +366,14 @@ func TestExportShell(t *testing.T) {
 		{
 			name: "GitHub Actions with valid config and secrets",
 			setupEnv: func(t *testing.T) {
-				os.Setenv("GITHUB_ACTIONS", "true")
-				os.Setenv("TEST_VAR1", "value1")
-				os.Setenv("TEST_VAR2", "value with spaces")
-				os.Setenv("TEST_VAR3", "value'with'quotes")
+				t.Helper()
+				t.Setenv("GITHUB_ACTIONS", "true")
+				t.Setenv("TEST_VAR1", "value1")
+				t.Setenv("TEST_VAR2", "value with spaces")
+				t.Setenv("TEST_VAR3", "value'with'quotes")
 			},
 			setupConfig: func(t *testing.T) string {
+				t.Helper()
 				tmpFile, err := os.CreateTemp(t.TempDir(), "teller-*.yml")
 				if err != nil {
 					t.Fatalf("Failed to create temp file: %v", err)
@@ -385,6 +404,7 @@ func TestExportShell(t *testing.T) {
 			silent:  false,
 			wantErr: false,
 			validateOutput: func(t *testing.T, output string) {
+				t.Helper()
 				expectedLines := []string{
 					"export MAPPED_VAR1='value1'",
 					"export MAPPED_VAR2='value with spaces'",
@@ -401,12 +421,13 @@ func TestExportShell(t *testing.T) {
 		{
 			name: "GitHub Actions with missing config file",
 			setupEnv: func(t *testing.T) {
-				os.Setenv("GITHUB_ACTIONS", "true")
+				t.Helper()
+				t.Setenv("GITHUB_ACTIONS", "true")
 			},
-			setupConfig: func(t *testing.T) string {
+			setupConfig: func(_ *testing.T) string {
 				return "/nonexistent/config.yml"
 			},
-			cleanupConfig: func(path string) {},
+			cleanupConfig: func(_ string) {},
 			silent:        false,
 			wantErr:       true,
 			errContains:   "failed to load config",
@@ -414,25 +435,18 @@ func TestExportShell(t *testing.T) {
 		{
 			name: "GitHub Actions with missing variables in silent mode",
 			setupEnv: func(t *testing.T) {
-				os.Setenv("GITHUB_ACTIONS", "true")
-				os.Setenv("EXISTING_VAR", "existing_value")
+				t.Helper()
+				t.Setenv("GITHUB_ACTIONS", "true")
+				t.Setenv("EXISTING_VAR", "existing_value")
 			},
 			setupConfig: func(t *testing.T) string {
+				t.Helper()
 				tmpFile, err := os.CreateTemp(t.TempDir(), "teller-*.yml")
 				if err != nil {
 					t.Fatalf("Failed to create temp file: %v", err)
 				}
 
-				content := `providers:
-  test-gsm:
-    kind: google_secretmanager
-    maps:
-      - id: test
-        path: projects/test/secrets/test
-        keys:
-          EXISTING_VAR: MAPPED_EXISTING
-          MISSING_VAR: MAPPED_MISSING
-`
+				content := shTestConfigContent
 				if _, err := tmpFile.WriteString(content); err != nil {
 					tmpFile.Close()
 					os.Remove(tmpFile.Name())
@@ -447,6 +461,7 @@ func TestExportShell(t *testing.T) {
 			silent:  true,
 			wantErr: false,
 			validateOutput: func(t *testing.T, output string) {
+				t.Helper()
 				if !strings.Contains(output, "export MAPPED_EXISTING='existing_value'") {
 					t.Errorf("exportShell should export existing variable, got: %s", output)
 				}
@@ -458,25 +473,18 @@ func TestExportShell(t *testing.T) {
 		{
 			name: "GitHub Actions with missing variables not silent",
 			setupEnv: func(t *testing.T) {
-				os.Setenv("GITHUB_ACTIONS", "true")
-				os.Setenv("EXISTING_VAR", "existing_value")
+				t.Helper()
+				t.Setenv("GITHUB_ACTIONS", "true")
+				t.Setenv("EXISTING_VAR", "existing_value")
 			},
 			setupConfig: func(t *testing.T) string {
+				t.Helper()
 				tmpFile, err := os.CreateTemp(t.TempDir(), "teller-*.yml")
 				if err != nil {
 					t.Fatalf("Failed to create temp file: %v", err)
 				}
 
-				content := `providers:
-  test-gsm:
-    kind: google_secretmanager
-    maps:
-      - id: test
-        path: projects/test/secrets/test
-        keys:
-          EXISTING_VAR: MAPPED_EXISTING
-          MISSING_VAR: MAPPED_MISSING
-`
+				content := shTestConfigContent
 				if _, err := tmpFile.WriteString(content); err != nil {
 					tmpFile.Close()
 					os.Remove(tmpFile.Name())
@@ -494,8 +502,9 @@ func TestExportShell(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // sub-tests use t.Setenv()
 		t.Run(tt.name, func(t *testing.T) {
+			// Note: Cannot use t.Parallel() here as sub-tests use t.Setenv()
 			// Setup environment
 			if tt.setupEnv != nil {
 				tt.setupEnv(t)

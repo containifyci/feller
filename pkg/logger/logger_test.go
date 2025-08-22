@@ -8,6 +8,7 @@ import (
 )
 
 func TestSetDebug(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		enabled  bool
@@ -27,6 +28,7 @@ func TestSetDebug(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			SetDebug(tt.enabled)
 			if got := IsDebugEnabled(); got != tt.expected {
 				t.Errorf("SetDebug(%v) = %v, want %v", tt.enabled, got, tt.expected)
@@ -36,6 +38,7 @@ func TestSetDebug(t *testing.T) {
 }
 
 func TestSetVerbose(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		enabled  bool
@@ -55,6 +58,7 @@ func TestSetVerbose(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			SetVerbose(tt.enabled)
 			if got := IsVerboseEnabled(); got != tt.expected {
 				t.Errorf("SetVerbose(%v) = %v, want %v", tt.enabled, got, tt.expected)
@@ -64,6 +68,7 @@ func TestSetVerbose(t *testing.T) {
 }
 
 func TestIsDebugEnabled(t *testing.T) {
+	t.Parallel()
 	// Reset state
 	SetDebug(false)
 	if IsDebugEnabled() {
@@ -77,6 +82,7 @@ func TestIsDebugEnabled(t *testing.T) {
 }
 
 func TestIsVerboseEnabled(t *testing.T) {
+	t.Parallel()
 	// Reset state
 	SetVerbose(false)
 	if IsVerboseEnabled() {
@@ -89,6 +95,7 @@ func TestIsVerboseEnabled(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Cannot run in parallel due to os.Stderr manipulation
 func TestDebugLogging(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -126,6 +133,7 @@ func TestDebugLogging(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			//nolint:paralleltest // Cannot run in parallel due to os.Stderr manipulation
 			// Capture stderr
 			oldStderr := os.Stderr
 			r, w, _ := os.Pipe()
@@ -162,6 +170,7 @@ func TestDebugLogging(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Cannot run in parallel due to os.Stderr manipulation
 func TestVerboseLogging(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -199,6 +208,7 @@ func TestVerboseLogging(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			//nolint:paralleltest // Cannot run in parallel due to os.Stderr manipulation
 			// Capture stderr
 			oldStderr := os.Stderr
 			r, w, _ := os.Pipe()
@@ -235,6 +245,7 @@ func TestVerboseLogging(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Cannot run in parallel due to os.Stderr manipulation
 func TestInfoLogging(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -258,6 +269,7 @@ func TestInfoLogging(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			//nolint:paralleltest // Cannot run in parallel due to os.Stderr manipulation
 			// Capture stderr
 			oldStderr := os.Stderr
 			r, w, _ := os.Pipe()
@@ -285,6 +297,7 @@ func TestInfoLogging(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Cannot run in parallel due to os.Stderr manipulation
 func TestErrorLogging(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -308,6 +321,7 @@ func TestErrorLogging(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			//nolint:paralleltest // Cannot run in parallel due to os.Stderr manipulation
 			// Capture stderr
 			oldStderr := os.Stderr
 			r, w, _ := os.Pipe()
@@ -336,6 +350,7 @@ func TestErrorLogging(t *testing.T) {
 }
 
 func TestLoggerStateIsolation(t *testing.T) {
+	t.Parallel()
 	// Reset initial state
 	SetDebug(false)
 	SetVerbose(false)

@@ -151,7 +151,7 @@ Examples:
   
   # Force overwrite (explicit default behavior)
   feller github-secret add --repo owner/repo --force`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			// For testing, we'll create a mock function that validates flags
 			// In real implementation, this would call addGitHubSecrets
 
@@ -202,6 +202,7 @@ func validateOverwriteFlagsWithParams(force, skipExisting, confirmOverwrite bool
 
 // Test basic command structure and help output
 func TestExportCommandStructure(t *testing.T) {
+	t.Parallel()
 	cmd := NewExportCommand()
 
 	// Test command structure
@@ -212,6 +213,7 @@ func TestExportCommandStructure(t *testing.T) {
 }
 
 func TestRunCommandStructure(t *testing.T) {
+	t.Parallel()
 	cmd := NewRunCommand()
 
 	// Test command structure
@@ -231,6 +233,7 @@ func TestRunCommandStructure(t *testing.T) {
 }
 
 func TestShCommandStructure(t *testing.T) {
+	t.Parallel()
 	cmd := NewShCommand()
 
 	// Test command structure
@@ -240,6 +243,7 @@ func TestShCommandStructure(t *testing.T) {
 }
 
 func TestGitHubSecretCommandStructure(t *testing.T) {
+	t.Parallel()
 	cmd := NewGitHubSecretCommand()
 
 	// Test command structure
@@ -251,6 +255,7 @@ func TestGitHubSecretCommandStructure(t *testing.T) {
 
 // Test GitHub secret add command structure and flags
 func TestGitHubSecretAddCommandStructure(t *testing.T) {
+	t.Parallel()
 	cmd := NewGitHubSecretAddCommand()
 
 	// Test command structure
@@ -278,6 +283,7 @@ func TestGitHubSecretAddCommandStructure(t *testing.T) {
 
 // Test GitHub secret add command flag combinations
 func TestGitHubSecretAddFlagValidation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		errMsg  string
@@ -310,6 +316,7 @@ func TestGitHubSecretAddFlagValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cmd := NewGitHubSecretAddCommand()
 			cmd.SetArgs(tt.args)
 			err := cmd.Execute()

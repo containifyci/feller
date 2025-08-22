@@ -8,16 +8,39 @@ import (
 	"github.com/containifyci/feller/pkg/providers"
 )
 
+var PATH = ensureStandardPathsInPATH(os.Getenv("PATH"))
+
+// ensureStandardPathsInPATH adds standard paths to PATH if they're missing
+func ensureStandardPathsInPATH(currentPath string) string {
+	standardPaths := []string{"/bin", "/usr/bin", "/usr/local/bin"}
+	pathEntries := strings.Split(currentPath, ":")
+
+	// Create map of existing paths for quick lookup
+	existingPaths := make(map[string]bool)
+	for _, path := range pathEntries {
+		existingPaths[path] = true
+	}
+
+	// Add missing standard paths
+	for _, stdPath := range standardPaths {
+		if !existingPaths[stdPath] {
+			currentPath = stdPath + ":" + currentPath
+		}
+	}
+
+	return currentPath
+}
+
 func TestIsGitHubActions(t *testing.T) {
 	// Save original environment
 	originalVal := os.Getenv("GITHUB_ACTIONS")
-	defer func() {
+	t.Cleanup(func() {
 		if originalVal == "" {
 			os.Unsetenv("GITHUB_ACTIONS")
 		} else {
-			os.Setenv("GITHUB_ACTIONS", originalVal)
+			t.Setenv("GITHUB_ACTIONS", originalVal)
 		}
-	}()
+	})
 
 	tests := []struct {
 		name     string
@@ -48,10 +71,11 @@ func TestIsGitHubActions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Note: Cannot use t.Parallel() here as sub-test uses t.Setenv()
 			if tt.envValue == "" {
 				os.Unsetenv("GITHUB_ACTIONS")
 			} else {
-				os.Setenv("GITHUB_ACTIONS", tt.envValue)
+				t.Setenv("GITHUB_ACTIONS", tt.envValue)
 			}
 
 			result := isGitHubActions()
@@ -63,6 +87,7 @@ func TestIsGitHubActions(t *testing.T) {
 }
 
 func TestGetSecretKeys(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		secrets  providers.SecretMap
@@ -93,6 +118,7 @@ func TestGetSecretKeys(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := getSecretKeys(tt.secrets)
 
 			if len(result) != len(tt.expected) {
@@ -131,6 +157,7 @@ func TestGetSecretKeys(t *testing.T) {
 }
 
 func TestMaskSecretFromCmd(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    string
@@ -170,6 +197,7 @@ func TestMaskSecretFromCmd(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := maskSecret(tt.value)
 			if result != tt.expected {
 				t.Errorf("maskSecret(%q) = %q, want %q", tt.value, result, tt.expected)
@@ -179,6 +207,7 @@ func TestMaskSecretFromCmd(t *testing.T) {
 }
 
 func TestHandleMissingVariables(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		missingVars []providers.MissingVariable
@@ -260,6 +289,7 @@ func TestHandleMissingVariables(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := handleMissingVariables(tt.missingVars)
 
 			if tt.wantErr {
@@ -274,16 +304,14 @@ func TestHandleMissingVariables(t *testing.T) {
 						t.Errorf("handleMissingVariables() error should contain %q, got: %v", contains, err)
 					}
 				}
-			} else {
-				if err != nil {
-					t.Errorf("handleMissingVariables() unexpected error = %v", err)
-				}
+			} else if err != nil {
+				t.Errorf("handleMissingVariables() unexpected error = %v", err)
 			}
 		})
 	}
 }
 
-func TestFindTellerBinary(t *testing.T) {
+func TestFindTellerBinary(t *testing.T) { //nolint:paralleltest // sub-tests use t.Setenv()
 	tests := []struct {
 		setupFunc   func(t *testing.T)
 		cleanupFunc func(t *testing.T)
@@ -294,21 +322,23 @@ func TestFindTellerBinary(t *testing.T) {
 		{
 			name: "no teller binary found",
 			setupFunc: func(t *testing.T) {
+				t.Helper()
 				// Save original PATH
 				originalPath := os.Getenv("PATH")
 				t.Cleanup(func() {
-					os.Setenv("PATH", originalPath)
+					t.Setenv("PATH", originalPath)
 				})
 				// Set empty PATH to ensure no binaries are found
-				os.Setenv("PATH", "")
+				t.Setenv("PATH", "")
 			},
 			wantErr:     true,
 			errContains: "teller binary not found in PATH",
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // setupFunc may use t.Setenv()
 		t.Run(tt.name, func(t *testing.T) {
+			// Note: Cannot use t.Parallel() here as setupFunc may use t.Setenv()
 			if tt.setupFunc != nil {
 				tt.setupFunc(t)
 			}
@@ -340,6 +370,8 @@ func TestFindTellerBinary(t *testing.T) {
 }
 
 func TestExecuteDirectCommand(t *testing.T) {
+	t.Logf("Testing direct command execution with PATH:`%s`", PATH)
+	t.Parallel()
 	tests := []struct {
 		name        string
 		errContains string
@@ -356,14 +388,14 @@ func TestExecuteDirectCommand(t *testing.T) {
 		},
 		{
 			name:    "valid command with echo",
-			args:    []string{"echo", "test"},
-			env:     []string{"PATH=" + os.Getenv("PATH")},
+			args:    []string{"/bin/echo", "test"},
+			env:     []string{"PATH=" + PATH},
 			wantErr: false,
 		},
 		{
 			name:        "invalid command",
 			args:        []string{"nonexistent-command-12345"},
-			env:         []string{"PATH=" + os.Getenv("PATH")},
+			env:         []string{"PATH=" + PATH},
 			wantErr:     true,
 			errContains: "direct command execution failed",
 		},
@@ -371,6 +403,7 @@ func TestExecuteDirectCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := executeDirectCommand(tt.args, tt.env)
 
 			if tt.wantErr {
@@ -396,7 +429,7 @@ func TestExecuteShellCommand(t *testing.T) {
 		if originalShell == "" {
 			os.Unsetenv("SHELL")
 		} else {
-			os.Setenv("SHELL", originalShell)
+			t.Setenv("SHELL", originalShell)
 		}
 	}()
 
@@ -417,22 +450,22 @@ func TestExecuteShellCommand(t *testing.T) {
 		},
 		{
 			name:    "valid shell command with default shell",
-			args:    []string{"echo", "test"},
-			env:     []string{"PATH=" + os.Getenv("PATH")},
+			args:    []string{"/bin/echo", "test"},
+			env:     []string{"PATH=" + PATH},
 			shell:   "", // Will use default /bin/sh
 			wantErr: false,
 		},
 		{
 			name:    "valid shell command with custom shell",
-			args:    []string{"echo", "test"},
-			env:     []string{"PATH=" + os.Getenv("PATH")},
+			args:    []string{"/bin/echo", "test"},
+			env:     []string{"PATH=" + PATH},
 			shell:   "/bin/sh",
 			wantErr: false,
 		},
 		{
 			name:        "invalid shell command",
 			args:        []string{"nonexistent-command-12345"},
-			env:         []string{"PATH=" + os.Getenv("PATH")},
+			env:         []string{"PATH=" + PATH},
 			shell:       "/bin/sh",
 			wantErr:     true,
 			errContains: "shell command execution failed",
@@ -445,7 +478,7 @@ func TestExecuteShellCommand(t *testing.T) {
 			if tt.shell == "" {
 				os.Unsetenv("SHELL")
 			} else {
-				os.Setenv("SHELL", tt.shell)
+				t.Setenv("SHELL", tt.shell)
 			}
 
 			err := executeShellCommand(tt.args, tt.env)
@@ -466,6 +499,7 @@ func TestExecuteShellCommand(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Cannot run in parallel due to global command state access
 func TestExecute(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -479,6 +513,7 @@ func TestExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			//nolint:paralleltest // Cannot run in parallel due to global command state access
 			// Since Execute() calls rootCmd.Execute(), and we don't want to actually run
 			// the CLI during tests, we can test the error handling path instead
 			err := Execute()
@@ -502,14 +537,14 @@ func TestFallbackToTeller(t *testing.T) {
 	originalCfgFile := cfgFile
 	originalVerbose := verbose
 	originalPath := os.Getenv("PATH")
-	defer func() {
+	t.Cleanup(func() {
 		cfgFile = originalCfgFile
 		verbose = originalVerbose
-		os.Setenv("PATH", originalPath)
-	}()
+		t.Setenv("PATH", originalPath)
+	})
 
 	// Clear PATH to ensure teller binary won't be found
-	os.Setenv("PATH", "")
+	t.Setenv("PATH", "")
 
 	tests := []struct {
 		name        string
@@ -521,7 +556,7 @@ func TestFallbackToTeller(t *testing.T) {
 	}{
 		{
 			name:        "teller binary not found",
-			args:        []string{"run", "echo", "test"},
+			args:        []string{"run", "/bin/echo", "test"},
 			cfgFile:     "",
 			verbose:     false,
 			wantErr:     true,
@@ -545,7 +580,7 @@ func TestFallbackToTeller(t *testing.T) {
 		},
 		{
 			name:        "with both flags",
-			args:        []string{"run", "--", "echo", "test"},
+			args:        []string{"run", "--", "/bin/echo", "test"},
 			cfgFile:     "/path/to/config.yml",
 			verbose:     true,
 			wantErr:     true,
@@ -553,8 +588,9 @@ func TestFallbackToTeller(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // sub-tests modify global variables
 		t.Run(tt.name, func(t *testing.T) {
+			// Note: Cannot use t.Parallel() here as sub-tests modify global variables
 			cfgFile = tt.cfgFile
 			verbose = tt.verbose
 
@@ -578,27 +614,27 @@ func TestFallbackToTeller(t *testing.T) {
 func TestRunCommand(t *testing.T) {
 	// Save original environment
 	originalEnv := os.Environ()
-	defer func() {
+	t.Cleanup(func() {
 		os.Clearenv()
 		for _, env := range originalEnv {
 			parts := strings.SplitN(env, "=", 2)
 			if len(parts) == 2 {
-				os.Setenv(parts[0], parts[1])
+				t.Setenv(parts[0], parts[1])
 			}
 		}
-	}()
+	})
 
 	// Save original values
 	originalCfgFile := cfgFile
 	originalSilent := silent
 	originalResetEnv := resetEnv
 	originalShell := shell
-	defer func() {
+	t.Cleanup(func() {
 		cfgFile = originalCfgFile
 		silent = originalSilent
 		resetEnv = originalResetEnv
 		shell = originalShell
-	}()
+	})
 
 	tests := []struct {
 		setupEnv      func(t *testing.T)
@@ -614,12 +650,14 @@ func TestRunCommand(t *testing.T) {
 	}{
 		{
 			name: "GitHub Actions with valid command",
-			args: []string{"echo", "test"},
+			args: []string{"/bin/echo", "test"},
 			setupEnv: func(t *testing.T) {
-				os.Setenv("GITHUB_ACTIONS", "true")
-				os.Setenv("TEST_VAR", "test_value")
+				t.Helper()
+				t.Setenv("GITHUB_ACTIONS", "true")
+				t.Setenv("TEST_VAR", "test_value")
 			},
 			setupConfig: func(t *testing.T) string {
+				t.Helper()
 				tmpFile, err := os.CreateTemp(t.TempDir(), "teller-*.yml")
 				if err != nil {
 					t.Fatalf("Failed to create temp file: %v", err)
@@ -652,14 +690,15 @@ func TestRunCommand(t *testing.T) {
 		},
 		{
 			name: "GitHub Actions with missing config file",
-			args: []string{"echo", "test"},
+			args: []string{"/bin/echo", "test"},
 			setupEnv: func(t *testing.T) {
-				os.Setenv("GITHUB_ACTIONS", "true")
+				t.Helper()
+				t.Setenv("GITHUB_ACTIONS", "true")
 			},
-			setupConfig: func(t *testing.T) string {
+			setupConfig: func(_ *testing.T) string {
 				return "/nonexistent/config.yml"
 			},
-			cleanupConfig: func(path string) {},
+			cleanupConfig: func(_ string) {},
 			silent:        false,
 			resetEnv:      false,
 			shell:         false,
@@ -668,12 +707,14 @@ func TestRunCommand(t *testing.T) {
 		},
 		{
 			name: "GitHub Actions with missing variables not silent",
-			args: []string{"echo", "test"},
+			args: []string{"/bin/echo", "test"},
 			setupEnv: func(t *testing.T) {
-				os.Setenv("GITHUB_ACTIONS", "true")
-				os.Setenv("EXISTING_VAR", "existing_value")
+				t.Helper()
+				t.Setenv("GITHUB_ACTIONS", "true")
+				t.Setenv("EXISTING_VAR", "existing_value")
 			},
 			setupConfig: func(t *testing.T) string {
+				t.Helper()
 				tmpFile, err := os.CreateTemp(t.TempDir(), "teller-*.yml")
 				if err != nil {
 					t.Fatalf("Failed to create temp file: %v", err)
@@ -708,12 +749,14 @@ func TestRunCommand(t *testing.T) {
 		},
 		{
 			name: "GitHub Actions with missing variables in silent mode",
-			args: []string{"echo", "test"},
+			args: []string{"/bin/echo", "test"},
 			setupEnv: func(t *testing.T) {
-				os.Setenv("GITHUB_ACTIONS", "true")
-				os.Setenv("EXISTING_VAR", "existing_value")
+				t.Helper()
+				t.Setenv("GITHUB_ACTIONS", "true")
+				t.Setenv("EXISTING_VAR", "existing_value")
 			},
 			setupConfig: func(t *testing.T) string {
+				t.Helper()
 				tmpFile, err := os.CreateTemp(t.TempDir(), "teller-*.yml")
 				if err != nil {
 					t.Fatalf("Failed to create temp file: %v", err)
@@ -747,8 +790,9 @@ func TestRunCommand(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // setupEnv uses t.Setenv()
 		t.Run(tt.name, func(t *testing.T) {
+			// Note: Cannot use t.Parallel() here as setupEnv uses t.Setenv()
 			// Setup environment
 			if tt.setupEnv != nil {
 				tt.setupEnv(t)
