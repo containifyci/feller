@@ -78,6 +78,10 @@ func shellEscape(s string) string {
 
 // shellReplaceAll is a simple string replacement function
 func shellReplaceAll(s, old, replacement string) string {
+	// Handle edge case: empty old string should return original string
+	if old == "" {
+		return s
+	}
 	result := ""
 	for {
 		i := shellIndexOf(s, old)
