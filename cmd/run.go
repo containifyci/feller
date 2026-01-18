@@ -100,7 +100,7 @@ func runCommand(_ *cobra.Command, args []string) error {
 	}
 
 	// Prepare environment with pre-allocation
-	var env []string //nolint:prealloc // properly allocated in each branch below
+	var env []string
 	if !resetEnv {
 		// Start with current environment - pre-allocate for current env + secrets
 		currentEnv := os.Environ()

@@ -82,17 +82,17 @@ func shellReplaceAll(s, old, replacement string) string {
 	if old == "" {
 		return s
 	}
-	result := ""
+	var result strings.Builder
 	for {
 		i := shellIndexOf(s, old)
 		if i == -1 {
-			result += s
+			result.WriteString(s)
 			break
 		}
-		result += s[:i] + replacement
+		result.WriteString(s[:i] + replacement)
 		s = s[i+len(old):]
 	}
-	return result
+	return result.String()
 }
 
 // shellIndexOf finds the index of substr in s, or -1 if not found
