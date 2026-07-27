@@ -129,6 +129,7 @@ linters:
       - linters:
           - errcheck
           - funlen
+          - goconst
           - gosec
           - wrapcheck
         path: _test.go

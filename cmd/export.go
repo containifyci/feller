@@ -32,7 +32,7 @@ Examples:
   feller export yaml
   feller export env`,
 	Args:      cobra.ExactArgs(1),
-	ValidArgs: []string{"json", "yaml", "env", "csv"},
+	ValidArgs: []string{formatJSON, formatYAML, formatENV, formatCSV},
 	RunE:      exportSecrets,
 }
 
@@ -47,7 +47,7 @@ func exportSecrets(_ *cobra.Command, args []string) error {
 	// Check if we're in GitHub Actions
 	if !isGitHubActions() {
 		logger.Debug("Not in GitHub Actions, falling back to teller")
-		return fallbackToTeller(append([]string{"export"}, args...))
+		return fallbackToTeller(append([]string{cmdExport}, args...))
 	}
 
 	logger.Debug("In GitHub Actions mode, processing secrets for export")
@@ -77,16 +77,16 @@ func exportSecrets(_ *cobra.Command, args []string) error {
 	}
 
 	switch format {
-	case "json":
+	case formatJSON:
 		logger.Debug("Exporting in JSON format")
 		return exportJSON(result.Secrets)
-	case "yaml":
+	case formatYAML:
 		logger.Debug("Exporting in YAML format")
 		return exportYAML(result.Secrets)
-	case "env":
+	case formatENV:
 		logger.Debug("Exporting in ENV format")
 		return exportEnv(result.Secrets)
-	case "csv":
+	case formatCSV:
 		logger.Debug("Exporting in CSV format")
 		return exportCSV(result.Secrets)
 	default:
@@ -161,7 +161,7 @@ func handleMissingVariablesExport(missingVars []providers.MissingVariable) error
 	}
 
 	var errorMsg strings.Builder
-	errorMsg.WriteString(fmt.Sprintf("Cannot export: Missing %d required environment variable(s) in GitHub Actions:\n\n", len(missingVars)))
+	fmt.Fprintf(&errorMsg, "Cannot export: Missing %d required environment variable(s) in GitHub Actions:\n\n", len(missingVars))
 
 	// Group by provider for better organization
 	providerGroups := make(map[string][]providers.MissingVariable)
@@ -170,9 +170,9 @@ func handleMissingVariablesExport(missingVars []providers.MissingVariable) error
 	}
 
 	for provider, vars := range providerGroups {
-		errorMsg.WriteString(fmt.Sprintf("Provider '%s':\n", provider))
+		fmt.Fprintf(&errorMsg, "Provider '%s':\n", provider)
 		for _, mv := range vars {
-			errorMsg.WriteString(fmt.Sprintf("  • %s (maps to: %s)\n", mv.VariableName, mv.MappedTo))
+			fmt.Fprintf(&errorMsg, "  • %s (maps to: %s)\n", mv.VariableName, mv.MappedTo)
 		}
 		errorMsg.WriteString("\n")
 	}
@@ -182,7 +182,7 @@ func handleMissingVariablesExport(missingVars []providers.MissingVariable) error
 	errorMsg.WriteString("- name: Export with secrets\n")
 	errorMsg.WriteString("  env:\n")
 	for _, mv := range missingVars {
-		errorMsg.WriteString(fmt.Sprintf("    %s: ${{ secrets.%s }}\n", mv.VariableName, mv.VariableName))
+		fmt.Fprintf(&errorMsg, "    %s: ${{ secrets.%s }}\n", mv.VariableName, mv.VariableName)
 	}
 	errorMsg.WriteString("  run: feller export json\n")
 	errorMsg.WriteString("```\n\n")

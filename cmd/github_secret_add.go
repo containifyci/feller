@@ -325,7 +325,7 @@ func getSecretsFromTeller() (map[string]string, error) {
 	}
 
 	// Build teller command arguments
-	args := []string{"export", "json"}
+	args := []string{cmdExport, formatJSON}
 	if cfgFile != "" {
 		args = append([]string{"--config", cfgFile}, args...)
 		logger.Debug("Using config file: %s", cfgFile)
