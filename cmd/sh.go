@@ -112,7 +112,7 @@ func handleMissingVariablesShell(missingVars []providers.MissingVariable) error 
 	}
 
 	var errorMsg strings.Builder
-	errorMsg.WriteString(fmt.Sprintf("Cannot generate shell exports: Missing %d required environment variable(s) in GitHub Actions:\n\n", len(missingVars)))
+	fmt.Fprintf(&errorMsg, "Cannot generate shell exports: Missing %d required environment variable(s) in GitHub Actions:\n\n", len(missingVars))
 
 	// Group by provider for better organization
 	providerGroups := make(map[string][]providers.MissingVariable)
@@ -121,9 +121,9 @@ func handleMissingVariablesShell(missingVars []providers.MissingVariable) error 
 	}
 
 	for provider, vars := range providerGroups {
-		errorMsg.WriteString(fmt.Sprintf("Provider '%s':\n", provider))
+		fmt.Fprintf(&errorMsg, "Provider '%s':\n", provider)
 		for _, mv := range vars {
-			errorMsg.WriteString(fmt.Sprintf("  • %s (maps to: %s)\n", mv.VariableName, mv.MappedTo))
+			fmt.Fprintf(&errorMsg, "  • %s (maps to: %s)\n", mv.VariableName, mv.MappedTo)
 		}
 		errorMsg.WriteString("\n")
 	}
@@ -133,7 +133,7 @@ func handleMissingVariablesShell(missingVars []providers.MissingVariable) error 
 	errorMsg.WriteString("- name: Set shell variables\n")
 	errorMsg.WriteString("  env:\n")
 	for _, mv := range missingVars {
-		errorMsg.WriteString(fmt.Sprintf("    %s: ${{ secrets.%s }}\n", mv.VariableName, mv.VariableName))
+		fmt.Fprintf(&errorMsg, "    %s: ${{ secrets.%s }}\n", mv.VariableName, mv.VariableName)
 	}
 	errorMsg.WriteString("  run: eval \"$(feller sh)\"\n")
 	errorMsg.WriteString("```\n\n")

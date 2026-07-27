@@ -20,6 +20,8 @@ var (
 	shell    bool
 )
 
+const defaultShell = "/bin/sh"
+
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:   "run [flags] -- command [args...]",
@@ -52,7 +54,7 @@ func runCommand(_ *cobra.Command, args []string) error {
 		logger.Debug("Not in GitHub Actions, preparing fallback to teller")
 
 		// Build the run command with proper flags and separator
-		runArgs := []string{"run"}
+		runArgs := []string{cmdRun}
 
 		// Add run-specific flags
 		if resetEnv {
@@ -148,7 +150,7 @@ func handleMissingVariables(missingVars []providers.MissingVariable) error {
 	}
 
 	var errorMsg strings.Builder
-	errorMsg.WriteString(fmt.Sprintf("Missing %d required environment variable(s) in GitHub Actions:\n\n", len(missingVars)))
+	fmt.Fprintf(&errorMsg, "Missing %d required environment variable(s) in GitHub Actions:\n\n", len(missingVars))
 
 	// Group by provider for better organization
 	providerGroups := make(map[string][]providers.MissingVariable)
@@ -157,9 +159,9 @@ func handleMissingVariables(missingVars []providers.MissingVariable) error {
 	}
 
 	for provider, vars := range providerGroups {
-		errorMsg.WriteString(fmt.Sprintf("Provider '%s':\n", provider))
+		fmt.Fprintf(&errorMsg, "Provider '%s':\n", provider)
 		for _, mv := range vars {
-			errorMsg.WriteString(fmt.Sprintf("  • %s (maps to: %s)\n", mv.VariableName, mv.MappedTo))
+			fmt.Fprintf(&errorMsg, "  • %s (maps to: %s)\n", mv.VariableName, mv.MappedTo)
 		}
 		errorMsg.WriteString("\n")
 	}
@@ -169,7 +171,7 @@ func handleMissingVariables(missingVars []providers.MissingVariable) error {
 	errorMsg.WriteString("- name: Run with secrets\n")
 	errorMsg.WriteString("  env:\n")
 	for _, mv := range missingVars {
-		errorMsg.WriteString(fmt.Sprintf("    %s: ${{ secrets.%s }}\n", mv.VariableName, mv.VariableName))
+		fmt.Fprintf(&errorMsg, "    %s: ${{ secrets.%s }}\n", mv.VariableName, mv.VariableName)
 	}
 	errorMsg.WriteString("  run: feller run -- your-command\n")
 	errorMsg.WriteString("```\n\n")
@@ -226,7 +228,7 @@ func executeShellCommand(args, env []string) error {
 	// Determine shell
 	shell := os.Getenv("SHELL")
 	if shell == "" {
-		shell = "/bin/sh"
+		shell = defaultShell
 		logger.Debug("SHELL environment variable not set, using default: %s", shell)
 	} else {
 		logger.Debug("Using shell from SHELL environment variable: %s", shell)
@@ -237,7 +239,7 @@ func executeShellCommand(args, env []string) error {
 	logger.Debug("Shell command string: %s", cmdStr)
 	logger.Debug("Environment variables: %d", len(env))
 
-	cmd := exec.CommandContext(context.Background(), shell, "-c", cmdStr)
+	cmd := exec.CommandContext(context.Background(), shell, "-c", cmdStr) //nolint:gosec // G702: intentional shell command execution (feller is a secrets runner)
 	cmd.Env = env
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
