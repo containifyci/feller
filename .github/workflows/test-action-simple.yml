@@ -3,7 +3,7 @@ name: Test Action Simple
 on:
   workflow_dispatch:
   push:
-    branches: [main, fr12k_github_action_setup_feller]
+    branches: [main]
 
 jobs:
   test-simple:

@@ -20,3 +20,14 @@ updates:
     commit-message:
       prefix: "go"
       include: "scope"
+  - package-ecosystem: "gomod"
+    directory: ".containifyci"
+    schedule:
+      interval: "daily"
+    groups:
+      minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
